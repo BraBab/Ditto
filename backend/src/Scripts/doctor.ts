@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { connectToDB, disconnectFromDB } from '../Config/db.js';
 import OpenAIService from '../Services/openai.service.js';
 import logger from '../Config/logger.js';
+import AppConfig from '../Config/AppConfig.js';
 
 /**
  * `npm run doctor`
@@ -35,46 +36,56 @@ export const formatDoctorReport = (checks: DoctorCheck[]): { report: string; all
 const runChecks = async (): Promise<DoctorCheck[]> => {
   const checks: DoctorCheck[] = [];
 
-  // Env check - if we reached this line, AppConfig import succeeded and env is valid.
+  // Env check - report what is actually configured
+  const configured = [];
+  if (AppConfig.MONGO_ENABLED) configured.push('MONGO_URI');
+  if (AppConfig.OPENAI_ENABLED) configured.push('OPENAI_API_KEY');
+  
   checks.push({
     name: 'Environment configuration',
     ok: true,
-    detail: 'valid (MONGO_URI, OPENAI_API_KEY present)',
+    detail: configured.length > 0 
+      ? `valid (${configured.join(', ')} present)` 
+      : 'valid (no optional vars set - server and pipeline will not start)',
   });
 
   // MongoDB check
-  try {
-    await connectToDB();
-    checks.push({
-      name: 'MongoDB connectivity',
-      ok: true,
-      detail: 'connected & ping successful',
-    });
-  } catch (err) {
-    checks.push({
-      name: 'MongoDB connectivity',
-      ok: false,
-      detail: `connection failed (${err instanceof Error ? err.message : err})`,
-    });
-  } finally {
-    await disconnectFromDB().catch(() => {});
+  if (AppConfig.MONGO_ENABLED) {
+    try {
+      await connectToDB();
+      checks.push({
+        name: 'MongoDB connectivity',
+        ok: true,
+        detail: 'connected & ping successful',
+      });
+    } catch (err) {
+      checks.push({
+        name: 'MongoDB connectivity',
+        ok: false,
+        detail: `connection failed (${err instanceof Error ? err.message : err})`,
+      });
+    } finally {
+      await disconnectFromDB().catch(() => {});
+    }
   }
 
   // OpenAI check
-  try {
-    const openai = new OpenAIService();
-    await openai.ping();
-    checks.push({
-      name: 'OpenAI API connectivity',
-      ok: true,
-      detail: `reachable (models listed / verified)`,
-    });
-  } catch (err) {
-    checks.push({
-      name: 'OpenAI API connectivity',
-      ok: false,
-      detail: `ping failed (${err instanceof Error ? err.message : err})`,
-    });
+  if (AppConfig.OPENAI_ENABLED) {
+    try {
+      const openai = new OpenAIService();
+      await openai.ping();
+      checks.push({
+        name: 'OpenAI API connectivity',
+        ok: true,
+        detail: `reachable (models listed / verified)`,
+      });
+    } catch (err) {
+      checks.push({
+        name: 'OpenAI API connectivity',
+        ok: false,
+        detail: `ping failed (${err instanceof Error ? err.message : err})`,
+      });
+    }
   }
 
   return checks;
