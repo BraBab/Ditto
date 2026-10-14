@@ -2,6 +2,7 @@ import type { ClusterMember } from '@/types/ditto';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CodeBlock } from '@/components/ui/code-block';
+import { CopySourceButton } from './copy-source-button';
 
 /**
  * One implementation, side by side with its siblings. The whole point is that
@@ -42,7 +43,10 @@ export function ImplementationCard({
             </Badge>
           )}
         </div>
-        <span className="tnum shrink-0 font-mono text-[11px] text-ink-subtle">{member.loc} loc</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="tnum font-mono text-[11px] text-ink-subtle">{member.loc} loc</span>
+          <CopySourceButton source={member.body} />
+        </div>
       </header>
 
       <p className="border-b border-line/70 px-3 py-1.5 font-mono text-[11px] text-ink-muted">
